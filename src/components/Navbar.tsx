@@ -1,11 +1,12 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import { useMobile } from "@/hooks/useMobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
 
   return (
     <nav className="bg-white/90 backdrop-blur-sm sticky top-0 z-40 shadow-sm">
