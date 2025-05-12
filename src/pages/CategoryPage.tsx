@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -6,6 +5,8 @@ import Footer from "@/components/Footer";
 import ItemCard, { ItemProps } from "@/components/ItemCard";
 import SearchBar from "@/components/SearchBar";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { giftToItemProps } from "@/utils/dataTransformers";
 
 // Mock data
 const mockItems: ItemProps[] = [
@@ -162,17 +163,21 @@ const generateMoreItems = (startId: number, category: string, count: number) => 
   return items;
 };
 
+// Update the component to use Supabase data
 const CategoryPage = () => {
   const { slug = "" } = useParams<{ slug: string }>();
   const [items, setItems] = useState<ItemProps[]>([]);
   const [filteredItems, setFilteredItems] = useState<ItemProps[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const observer = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
+
+  // Get all available categories
+  const [categories, setCategories] = useState<string[]>([]);
 
   // Get the proper category name from the slug
   const getCategoryNameFromSlug = (slug: string) => {
@@ -182,6 +187,7 @@ const CategoryPage = () => {
       'itens-divertidos': 'Itens Divertidos',
       'cozinha': 'Cozinha',
       'moveis': 'Móveis',
+      'todos': ''
     };
     
     return categoryMap[slug] || '';
@@ -189,24 +195,78 @@ const CategoryPage = () => {
 
   const categoryName = getCategoryNameFromSlug(slug);
 
-  // Get all available categories for filtering
-  const categories = Array.from(new Set(mockItems.map(item => item.category)));
-
-  // Initialize with mock data
+  // Fetch data from Supabase
   useEffect(() => {
-    const initialItems = slug 
-      ? mockItems.filter(item => item.category === categoryName)
-      : mockItems;
+    const fetchCategories = async () => {
+      try {
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('name');
 
-    setItems(initialItems);
-    setFilteredItems(initialItems);
+        if (categoriesError) {
+          console.error('Error loading categories:', categoriesError);
+          toast.error('Erro ao carregar categorias');
+          return;
+        }
 
+        if (categoriesData) {
+          setCategories(categoriesData.map(cat => cat.name));
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    const fetchItems = async () => {
+      try {
+        setLoading(true);
+        let query = supabase.from('gifts').select('*');
+
+        // If a specific category is selected
+        if (slug && slug !== 'todos') {
+          const categoryName = getCategoryNameFromSlug(slug);
+          const { data: categoryData } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('name', categoryName)
+            .single();
+
+          if (categoryData) {
+            query = query.eq('category_id', categoryData.id);
+          }
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          toast.error('Erro ao carregar itens: ' + error.message);
+          setLoading(false);
+          return;
+        }
+
+        // Transform the data
+        const transformedItems = data.map(giftToItemProps);
+        
+        setItems(transformedItems);
+        setFilteredItems(transformedItems);
+        setHasMore(false); // No infinite scroll with real data
+        setLoading(false);
+
+      } catch (error) {
+        console.error('Error fetching items:', error);
+        toast.error('Erro inesperado ao carregar itens.');
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+    fetchItems();
+    
     // Reset search and filter when category changes
     setSearchQuery("");
     setSelectedCategory("");
     setPage(1);
-    setHasMore(true);
-  }, [slug, categoryName]);
+  }, [slug]);
 
   // Handle search
   const handleSearch = (query: string) => {
@@ -295,7 +355,7 @@ const CategoryPage = () => {
 
   // Helper to get title based on category
   const getPageTitle = () => {
-    if (slug) {
+    if (slug && slug !== 'todos') {
       return `Categoria: ${categoryName}`;
     }
     return "Todos os Itens";

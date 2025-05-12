@@ -1,16 +1,84 @@
 
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { giftToItemProps } from "@/utils/dataTransformers";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
 import CategoryGrid from "@/components/CategoryGrid";
+import { ItemProps } from "@/components/ItemCard";
 
 const Index = () => {
+  const [featuredItems, setFeaturedItems] = useState<ItemProps[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Fetch items from Supabase
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('gifts')
+          .select('*')
+          .limit(3)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          toast.error('Erro ao carregar itens: ' + error.message);
+          return;
+        }
+
+        // Transform the data to the format expected by ItemCard
+        const items = data.map(giftToItemProps);
+        setFeaturedItems(items);
+      } catch (error) {
+        console.error('Error fetching items:', error);
+        toast.error('Erro inesperado ao carregar itens.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchItems();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow">
         <Hero />
         <CategoryGrid />
+        
+        {loading ? (
+          <div className="section text-center">
+            <div className="animate-spin h-8 w-8 border-4 border-green border-t-transparent rounded-full mx-auto"></div>
+            <p className="mt-2 text-gray-600">Carregando itens...</p>
+          </div>
+        ) : (
+          <>
+            {featuredItems.length > 0 && (
+              <section className="section bg-cream">
+                <div className="max-w-5xl mx-auto">
+                  <h2 className="text-3xl font-serif font-bold mb-6 text-center">Itens Recentes</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {featuredItems.map(item => (
+                      <div key={item.id} className="flex flex-col">
+                        <img 
+                          src={item.image_base64 || item.image} 
+                          alt={item.title}
+                          className="w-full aspect-[4/3] object-cover rounded-lg shadow-md mb-3"
+                        />
+                        <h3 className="text-lg font-medium">{item.title}</h3>
+                        <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+          </>
+        )}
         
         <section className="section bg-cream">
           <div className="max-w-3xl mx-auto text-center">

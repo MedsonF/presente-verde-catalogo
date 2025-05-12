@@ -54,6 +54,7 @@ export type Database = {
           created_at: string | null
           description: string
           id: number
+          image_base64: string | null
           image_url: string
           is_chosen: boolean
           payment_link_1: string
@@ -66,6 +67,7 @@ export type Database = {
           created_at?: string | null
           description: string
           id?: number
+          image_base64?: string | null
           image_url: string
           is_chosen?: boolean
           payment_link_1: string
@@ -78,6 +80,7 @@ export type Database = {
           created_at?: string | null
           description?: string
           id?: number
+          image_base64?: string | null
           image_url?: string
           is_chosen?: boolean
           payment_link_1?: string

@@ -8,6 +8,7 @@ export interface ItemProps {
   description: string;
   price: number;
   image: string;
+  image_base64?: string;
   category: string;
   available: boolean;
   pixLink?: string;
@@ -32,11 +33,14 @@ const ItemCard: React.FC<ItemCardProps> = ({ item }) => {
     });
   };
 
+  // Determine image source - use base64 if available, otherwise use URL
+  const imageSource = item.image_base64 || item.image;
+
   return (
     <div className={`bg-white rounded-lg overflow-hidden shadow-md transition-all ${!item.available ? 'item-unavailable' : ''}`}>
       <div className="relative">
         <img
-          src={item.image}
+          src={imageSource}
           alt={item.title}
           className="w-full aspect-[4/3] object-cover"
         />
@@ -65,7 +69,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item }) => {
         </div>
 
         <div className="flex items-center justify-between mt-4 mb-3">
-          <span className="text-xl font-bold text-gray-900">{formatPrice(item.price)}</span>
+          <span className="text-xl font-bold text-gray-900">{formatPrice(price)}</span>
           <span className="text-xs px-2 py-1 bg-green-100 text-green rounded-full">
             {item.category}
           </span>

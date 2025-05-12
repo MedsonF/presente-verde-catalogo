@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { fileToBase64, supabase } from "@/integrations/supabase/client";
+import { giftToItemProps, itemPropsToGift } from "@/utils/dataTransformers";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -14,7 +16,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ItemProps } from "@/components/ItemCard";
-import { supabase } from "@/integrations/supabase/client";
 
 // Mock data from previous components
 const mockItems: ItemProps[] = [
@@ -65,7 +66,7 @@ const categories = [
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [items, setItems] = useState<ItemProps[]>(mockItems);
+  const [items, setItems] = useState<ItemProps[]>([]);
   const [siteSettings, setSiteSettings] = useState({
     siteTitle: "Catálogo de Presentes",
     homeDescription: "Bem-vindo ao nosso catálogo de presentes! Aqui você encontra itens cuidadosamente selecionados para nossa lista de presentes.",
@@ -74,6 +75,12 @@ const AdminDashboard = () => {
   });
   const [editingItem, setEditingItem] = useState<ItemProps | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryMap, setCategoryMap] = useState<Record<string, number>>({});
+  const [categoryNameMap, setCategoryNameMap] = useState<Record<number, string>>({});
 
   // Authentication check
   useEffect(() => {
@@ -82,6 +89,62 @@ const AdminDashboard = () => {
       navigate("/admin/login");
     }
   }, [navigate]);
+
+  // Fetch data from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch categories
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*');
+
+        if (categoriesError) {
+          console.error('Error loading categories:', categoriesError);
+          toast.error('Erro ao carregar categorias');
+          return;
+        }
+
+        if (categoriesData) {
+          const catNames = categoriesData.map(cat => cat.name);
+          setCategories(catNames);
+          
+          // Create maps for easy lookup
+          const catMap: Record<string, number> = {};
+          const nameMap: Record<number, string> = {};
+          categoriesData.forEach(cat => {
+            catMap[cat.name] = cat.id;
+            nameMap[cat.id] = cat.name;
+          });
+          setCategoryMap(catMap);
+          setCategoryNameMap(nameMap);
+        }
+
+        // Fetch items
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('gifts')
+          .select('*');
+
+        if (itemsError) {
+          toast.error('Erro ao carregar itens: ' + itemsError.message);
+          return;
+        }
+
+        // Transform the data
+        const transformedItems = itemsData.map(gift => ({
+          ...giftToItemProps(gift),
+          category: gift.category_id ? categoryNameMap[gift.category_id] || 'Sem categoria' : 'Sem categoria'
+        }));
+        
+        setItems(transformedItems);
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error('Erro inesperado ao carregar dados.');
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Handle logout
   const handleLogout = () => {
@@ -95,18 +158,42 @@ const AdminDashboard = () => {
   const availableItems = items.filter(item => item.available).length;
   const chosenItems = items.filter(item => !item.available).length;
   
-  // Item form state - FIX: Define all properties as optional except required ones
+  // Item form state - Include image handling
   const [formData, setFormData] = useState({
     id: "",
     title: "",
     description: "",
     price: 0,
     image: "",
-    category: categories[0],
+    image_base64: "",
+    category: "",
     available: true,
     pixLink: "",
     installmentLink: "",
   });
+
+  // Handle image selection
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setSelectedImage(file);
+    
+    try {
+      // Create image preview
+      const base64 = await fileToBase64(file);
+      setImagePreview(base64);
+      setFormData(prev => ({
+        ...prev,
+        image_base64: base64,
+      }));
+    } catch (error) {
+      console.error('Error converting image to base64:', error);
+      toast.error('Erro ao processar a imagem.');
+    }
+  };
 
   // Handle form change
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -136,55 +223,133 @@ const AdminDashboard = () => {
   };
 
   // Add or update an item
-  const handleItemSubmit = (e: React.FormEvent) => {
+  const handleItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingItem) {
-      // Update existing item
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === editingItem.id ? { ...formData, id: editingItem.id } : item
-        )
-      );
-      toast.success("Item atualizado com sucesso!");
-    } else {
-      // Add new item
-      const newId = (Number(items[items.length - 1]?.id || "0") + 1).toString();
-      setItems(prevItems => [...prevItems, { ...formData, id: newId }]);
-      toast.success("Item adicionado com sucesso!");
+    try {
+      if (editingItem) {
+        // Update existing item in Supabase
+        const { error } = await supabase
+          .from('gifts')
+          .update({
+            ...itemPropsToGift({
+              ...formData,
+              category: formData.category ? categoryMap[formData.category].toString() : '0',
+            }),
+            category_id: formData.category ? categoryMap[formData.category] : null,
+          })
+          .eq('id', editingItem.id);
+
+        if (error) {
+          toast.error(`Erro ao atualizar item: ${error.message}`);
+          return;
+        }
+        
+        toast.success("Item atualizado com sucesso!");
+      } else {
+        // Add new item to Supabase
+        const { error } = await supabase
+          .from('gifts')
+          .insert({
+            ...itemPropsToGift({
+              ...formData,
+              category: formData.category ? categoryMap[formData.category].toString() : '0',
+            }),
+            category_id: formData.category ? categoryMap[formData.category] : null,
+          });
+
+        if (error) {
+          toast.error(`Erro ao adicionar item: ${error.message}`);
+          return;
+        }
+        
+        toast.success("Item adicionado com sucesso!");
+      }
+      
+      // Refresh items from database
+      const { data, error } = await supabase
+        .from('gifts')
+        .select('*');
+      
+      if (error) {
+        toast.error(`Erro ao atualizar lista: ${error.message}`);
+      } else if (data) {
+        const transformedItems = data.map(gift => ({
+          ...giftToItemProps(gift),
+          category: gift.category_id ? categoryNameMap[gift.category_id] || 'Sem categoria' : 'Sem categoria'
+        }));
+        setItems(transformedItems);
+      }
+      
+      // Reset form
+      setFormData({
+        id: "",
+        title: "",
+        description: "",
+        price: 0,
+        image: "",
+        image_base64: "",
+        category: categories[0] || "",
+        available: true,
+        pixLink: "",
+        installmentLink: "",
+      });
+      setSelectedImage(null);
+      setImagePreview("");
+      setEditingItem(null);
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Erro inesperado ao salvar item.');
     }
-    
-    // Reset form - FIX: Ensure all required properties are populated
-    setFormData({
-      id: "",
-      title: "",
-      description: "",
-      price: 0,
-      image: "",
-      category: categories[0],
-      available: true,
-      pixLink: "", // Ensure this has a default value even if empty string
-      installmentLink: "", // Ensure this has a default value even if empty string
-    });
-    setEditingItem(null);
   };
 
   // Handle item deletion
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     if (window.confirm("Tem certeza que deseja excluir este item?")) {
-      setItems(prevItems => prevItems.filter(item => item.id !== id));
-      toast.success("Item excluído com sucesso!");
+      try {
+        const { error } = await supabase
+          .from('gifts')
+          .delete()
+          .eq('id', id);
+          
+        if (error) {
+          toast.error(`Erro ao excluir item: ${error.message}`);
+          return;
+        }
+        
+        // Update local state
+        setItems(prevItems => prevItems.filter(item => item.id !== id));
+        toast.success("Item excluído com sucesso!");
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error('Erro inesperado ao excluir item.');
+      }
     }
   };
 
   // Edit an item
   const handleEditItem = (item: ItemProps) => {
-    // FIX: Ensure all required form fields are populated
+    // Fill form with item data
     setFormData({
       ...item,
-      pixLink: item.pixLink || "", // Ensure pixLink is provided, even if empty
-      installmentLink: item.installmentLink || "" // Ensure installmentLink is provided, even if empty
+      pixLink: item.pixLink || "",
+      installmentLink: item.installmentLink || "",
+      image_base64: item.image_base64 || "",
     });
+    
+    // Set image preview if available
+    if (item.image_base64) {
+      setImagePreview(item.image_base64);
+    } else if (item.image) {
+      setImagePreview(item.image);
+    }
+    
     setEditingItem(item);
     setActiveTab("items");
     
@@ -196,13 +361,35 @@ const AdminDashboard = () => {
   };
 
   // Toggle item availability
-  const handleToggleAvailability = (id: string) => {
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id ? { ...item, available: !item.available } : item
-      )
-    );
-    toast.success("Status do item atualizado!");
+  const handleToggleAvailability = async (id: string) => {
+    try {
+      // Find the current item
+      const item = items.find(item => item.id === id);
+      if (!item) return;
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('gifts')
+        .update({ is_chosen: item.available })
+        .eq('id', id);
+        
+      if (error) {
+        toast.error(`Erro ao atualizar status: ${error.message}`);
+        return;
+      }
+      
+      // Update local state
+      setItems(prevItems =>
+        prevItems.map(item =>
+          item.id === id ? { ...item, available: !item.available } : item
+        )
+      );
+      
+      toast.success("Status do item atualizado!");
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Erro inesperado ao atualizar status.');
+    }
   };
 
   // Save site settings
@@ -253,7 +440,7 @@ const AdminDashboard = () => {
     </div>
   );
 
-  // Render items tab
+  // Render items tab - Update to include image upload
   const renderItems = () => (
     <div>
       <h2 className="text-2xl font-serif font-bold mb-6">Gerenciar Itens</h2>
@@ -325,6 +512,7 @@ const AdminDashboard = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green focus:border-transparent"
               required
             >
+              <option value="">Selecione uma categoria</option>
               {categories.map(category => (
                 <option key={category} value={category}>{category}</option>
               ))}
@@ -333,7 +521,7 @@ const AdminDashboard = () => {
           
           <div>
             <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
-              URL da Imagem
+              URL da Imagem (opcional se enviar arquivo)
             </label>
             <input
               type="url"
@@ -342,9 +530,47 @@ const AdminDashboard = () => {
               value={formData.image}
               onChange={handleFormChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green focus:border-transparent"
-              required
             />
           </div>
+        </div>
+        
+        {/* New Image Upload Field */}
+        <div className="mb-4">
+          <label htmlFor="imageUpload" className="block text-sm font-medium text-gray-700 mb-1">
+            Enviar Imagem
+          </label>
+          <input
+            type="file"
+            id="imageUpload"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleImageChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green focus:border-transparent"
+          />
+          
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="mt-2">
+              <p className="text-sm text-gray-600 mb-1">Pré-visualização:</p>
+              <img 
+                src={imagePreview} 
+                alt="Preview" 
+                className="h-40 object-contain border rounded"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setImagePreview("");
+                  setSelectedImage(null);
+                  setFormData(prev => ({ ...prev, image_base64: "" }));
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+                className="text-sm text-red-600 mt-1"
+              >
+                Remover imagem
+              </button>
+            </div>
+          )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -403,11 +629,15 @@ const AdminDashboard = () => {
                   description: "",
                   price: 0,
                   image: "",
-                  category: categories[0],
+                  image_base64: "",
+                  category: categories[0] || "",
                   available: true,
                   pixLink: "",
                   installmentLink: "",
                 });
+                setImagePreview("");
+                setSelectedImage(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
               }}
               className="mr-4 py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
@@ -453,7 +683,9 @@ const AdminDashboard = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <img className="h-10 w-10 rounded-full object-cover" src={item.image} alt={item.title} />
+                        <img className="h-10 w-10 rounded-full object-cover" 
+                             src={item.image_base64 || item.image} 
+                             alt={item.title} />
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{item.title}</div>
