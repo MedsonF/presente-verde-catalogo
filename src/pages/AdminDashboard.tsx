@@ -232,10 +232,7 @@ const AdminDashboard = () => {
         const { error } = await supabase
           .from('gifts')
           .update({
-            ...itemPropsToGift({
-              ...formData,
-              category: formData.category ? categoryMap[formData.category].toString() : '0',
-            }),
+            ...itemPropsToGift(formData),
             category_id: formData.category ? categoryMap[formData.category] : null,
           })
           .eq('id', editingItem.id);
@@ -251,10 +248,7 @@ const AdminDashboard = () => {
         const { error } = await supabase
           .from('gifts')
           .insert({
-            ...itemPropsToGift({
-              ...formData,
-              category: formData.category ? categoryMap[formData.category].toString() : '0',
-            }),
+            ...itemPropsToGift(formData),
             category_id: formData.category ? categoryMap[formData.category] : null,
           });
 

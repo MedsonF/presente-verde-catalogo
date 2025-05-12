@@ -26,7 +26,7 @@ export const itemPropsToGift = (item: ItemProps): Partial<Database['public']['Ta
     price: item.price,
     image_url: item.image,
     image_base64: item.image_base64,
-    category_id: parseInt(item.category) || null,
+    category_id: item.category ? Number(item.category) : null,
     is_chosen: !item.available,
     payment_link_1: item.pixLink || '',
     payment_link_2: item.installmentLink,

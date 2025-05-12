@@ -69,7 +69,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item }) => {
         </div>
 
         <div className="flex items-center justify-between mt-4 mb-3">
-          <span className="text-xl font-bold text-gray-900">{formatPrice(price)}</span>
+          <span className="text-xl font-bold text-gray-900">{formatPrice(item.price)}</span>
           <span className="text-xs px-2 py-1 bg-green-100 text-green rounded-full">
             {item.category}
           </span>
