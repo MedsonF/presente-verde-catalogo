@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ItemProps } from "@/components/ItemCard";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data from previous components
 const mockItems: ItemProps[] = [
@@ -116,7 +117,7 @@ const AdminDashboard = () => {
   const availableItems = items.filter(item => item.available).length;
   const chosenItems = items.filter(item => !item.available).length;
   
-  // Item form state
+  // Item form state - FIX: Define all properties as optional except required ones
   const [formData, setFormData] = useState({
     id: "",
     title: "",
@@ -191,7 +192,7 @@ const AdminDashboard = () => {
       toast.success("Item adicionado com sucesso!");
     }
     
-    // Reset form
+    // Reset form - FIX: Ensure all required properties are populated
     setFormData({
       id: "",
       title: "",
@@ -200,8 +201,8 @@ const AdminDashboard = () => {
       image: "",
       category: categories[0],
       available: true,
-      pixLink: "",
-      installmentLink: "",
+      pixLink: "", // Ensure this has a default value even if empty string
+      installmentLink: "", // Ensure this has a default value even if empty string
     });
     setEditingItem(null);
   };
@@ -241,8 +242,11 @@ const AdminDashboard = () => {
 
   // Edit an item
   const handleEditItem = (item: ItemProps) => {
+    // FIX: Ensure all required form fields are populated
     setFormData({
-      ...item
+      ...item,
+      pixLink: item.pixLink || "", // Ensure pixLink is provided, even if empty
+      installmentLink: item.installmentLink || "" // Ensure installmentLink is provided, even if empty
     });
     setEditingItem(item);
     setActiveTab("items");

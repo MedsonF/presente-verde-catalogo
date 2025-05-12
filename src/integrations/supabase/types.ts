@@ -9,7 +9,110 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          id: number
+          name: string
+          slug: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          slug: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      gallery_images: {
+        Row: {
+          id: number
+          image_url: string
+          title: string | null
+          uploaded_at: string | null
+        }
+        Insert: {
+          id?: number
+          image_url: string
+          title?: string | null
+          uploaded_at?: string | null
+        }
+        Update: {
+          id?: number
+          image_url?: string
+          title?: string | null
+          uploaded_at?: string | null
+        }
+        Relationships: []
+      }
+      gifts: {
+        Row: {
+          category_id: number | null
+          created_at: string | null
+          description: string
+          id: number
+          image_url: string
+          is_chosen: boolean
+          payment_link_1: string
+          payment_link_2: string | null
+          price: number
+          title: string
+        }
+        Insert: {
+          category_id?: number | null
+          created_at?: string | null
+          description: string
+          id?: number
+          image_url: string
+          is_chosen?: boolean
+          payment_link_1: string
+          payment_link_2?: string | null
+          price: number
+          title: string
+        }
+        Update: {
+          category_id?: number | null
+          created_at?: string | null
+          description?: string
+          id?: number
+          image_url?: string
+          is_chosen?: boolean
+          payment_link_1?: string
+          payment_link_2?: string | null
+          price?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gifts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          id: string
+          is_admin: boolean
+          username: string
+        }
+        Insert: {
+          id: string
+          is_admin?: boolean
+          username: string
+        }
+        Update: {
+          id?: string
+          is_admin?: boolean
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
