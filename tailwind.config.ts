@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,26 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Custom colors for the gift catalog
+				beige: "#FAFAF5",
+				green: {
+					DEFAULT: "#305027",
+					light: "#4C7943",
+					dark: "#203618",
+					100: "#E8EFEA",
+					200: "#C7D6CB",
+					300: "#A5BEAB",
+					400: "#83A58C",
+					500: "#618D6D",
+					600: "#4A7451",
+					700: "#305027",
+					800: "#203618",
+					900: "#101D0C"
+				},
+				cream: "#F7F4E9",
+				olive: "#5A6B3F",
+				sand: "#E8E4D9"
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -70,26 +90,22 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+			},
+			fontFamily: {
+				serif: ['Playfair Display', 'serif'],
+				sans: ['Nunito Sans', 'sans-serif']
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
