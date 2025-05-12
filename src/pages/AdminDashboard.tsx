@@ -1,10 +1,8 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ShoppingBag,
-  Image,
   Settings,
   PlusCircle,
   Edit,
@@ -55,25 +53,6 @@ const mockItems: ItemProps[] = [
   },
 ];
 
-// Demo photos for gallery management
-const demoPhotos = [
-  {
-    id: "1",
-    url: "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80",
-    title: "Sala de Estar Decorada"
-  },
-  {
-    id: "2",
-    url: "https://images.unsplash.com/photo-1550581190-9c1c48d21d6c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80",
-    title: "Cozinha Americana"
-  },
-  {
-    id: "3",
-    url: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80",
-    title: "Quarto Principal"
-  },
-];
-
 // Mock categories for dropdown selection
 const categories = [
   "Eletrodomésticos",
@@ -87,7 +66,6 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [items, setItems] = useState<ItemProps[]>(mockItems);
-  const [photos, setPhotos] = useState(demoPhotos);
   const [siteSettings, setSiteSettings] = useState({
     siteTitle: "Catálogo de Presentes",
     homeDescription: "Bem-vindo ao nosso catálogo de presentes! Aqui você encontra itens cuidadosamente selecionados para nossa lista de presentes.",
@@ -129,13 +107,6 @@ const AdminDashboard = () => {
     pixLink: "",
     installmentLink: "",
   });
-  
-  // Photo form state
-  const [photoForm, setPhotoForm] = useState({
-    id: "",
-    url: "",
-    title: "",
-  });
 
   // Handle form change
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -153,15 +124,6 @@ const AdminDashboard = () => {
         [name]: value,
       }));
     }
-  };
-
-  // Handle photo form change
-  const handlePhotoFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setPhotoForm(prev => ({
-      ...prev,
-      [name]: value,
-    }));
   };
 
   // Handle site settings form change
@@ -207,36 +169,11 @@ const AdminDashboard = () => {
     setEditingItem(null);
   };
 
-  // Add a new photo
-  const handlePhotoSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Add new photo
-    const newId = (Number(photos[photos.length - 1]?.id || "0") + 1).toString();
-    setPhotos(prev => [...prev, { ...photoForm, id: newId }]);
-    toast.success("Foto adicionada com sucesso!");
-    
-    // Reset form
-    setPhotoForm({
-      id: "",
-      url: "",
-      title: "",
-    });
-  };
-
   // Handle item deletion
   const handleDeleteItem = (id: string) => {
     if (window.confirm("Tem certeza que deseja excluir este item?")) {
       setItems(prevItems => prevItems.filter(item => item.id !== id));
       toast.success("Item excluído com sucesso!");
-    }
-  };
-
-  // Handle photo deletion
-  const handleDeletePhoto = (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir esta foto?")) {
-      setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== id));
-      toast.success("Foto excluída com sucesso!");
     }
   };
 
@@ -578,88 +515,6 @@ const AdminDashboard = () => {
     </div>
   );
 
-  // Render gallery tab
-  const renderGallery = () => (
-    <div>
-      <h2 className="text-2xl font-serif font-bold mb-6">Gerenciar Galeria</h2>
-      
-      <form onSubmit={handlePhotoSubmit} className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h3 className="text-xl font-medium mb-4 text-green">Adicionar Nova Foto</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label htmlFor="photoUrl" className="block text-sm font-medium text-gray-700 mb-1">
-              URL da Imagem
-            </label>
-            <input
-              type="url"
-              id="photoUrl"
-              name="url"
-              value={photoForm.url}
-              onChange={handlePhotoFormChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green focus:border-transparent"
-              required
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="photoTitle" className="block text-sm font-medium text-gray-700 mb-1">
-              Título
-            </label>
-            <input
-              type="text"
-              id="photoTitle"
-              name="title"
-              value={photoForm.title}
-              onChange={handlePhotoFormChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green focus:border-transparent"
-              required
-            />
-          </div>
-        </div>
-        
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="py-2 px-4 bg-green text-white rounded-md hover:bg-green-600"
-          >
-            Adicionar Foto
-          </button>
-        </div>
-      </form>
-      
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-xl font-medium mb-4 text-green">Fotos da Galeria</h3>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {photos.map((photo) => (
-            <div key={photo.id} className="relative group">
-              <div className="aspect-square overflow-hidden rounded-md">
-                <img 
-                  src={photo.url}
-                  alt={photo.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md">
-                <div className="space-x-2">
-                  <button
-                    onClick={() => handleDeletePhoto(photo.id)}
-                    className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700"
-                    title="Excluir"
-                  >
-                    <Trash size={16} />
-                  </button>
-                </div>
-              </div>
-              <p className="mt-2 text-sm font-medium text-gray-900">{photo.title}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
   // Render settings tab
   const renderSettings = () => (
     <div>
@@ -787,15 +642,6 @@ const AdminDashboard = () => {
                 Gerenciar Itens
               </button>
               <button
-                onClick={() => setActiveTab("gallery")}
-                className={`w-full group flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                  activeTab === "gallery" ? "bg-white text-green" : "text-white hover:bg-green-dark"
-                }`}
-              >
-                <Image className="mr-3 h-5 w-5" />
-                Galeria
-              </button>
-              <button
                 onClick={() => setActiveTab("settings")}
                 className={`w-full group flex items-center px-4 py-3 text-sm font-medium rounded-md ${
                   activeTab === "settings" ? "bg-white text-green" : "text-white hover:bg-green-dark"
@@ -866,18 +712,6 @@ const AdminDashboard = () => {
               </button>
               <button
                 onClick={() => {
-                  setActiveTab("gallery");
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full group flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                  activeTab === "gallery" ? "bg-white text-green" : "text-white hover:bg-green-dark"
-                }`}
-              >
-                <Image className="mr-3 h-5 w-5" />
-                Galeria
-              </button>
-              <button
-                onClick={() => {
                   setActiveTab("settings");
                   setIsMobileMenuOpen(false);
                 }}
@@ -898,7 +732,6 @@ const AdminDashboard = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mt-16 md:mt-6">
               {activeTab === "dashboard" && renderDashboard()}
               {activeTab === "items" && renderItems()}
-              {activeTab === "gallery" && renderGallery()}
               {activeTab === "settings" && renderSettings()}
             </div>
           </div>
